@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     token.linha = 1;
     token.coluna = -1;
     FILE *arq = criarArquivo("teste.txt");
-    fseek(arq, 0, 0);
+    fseek(arq, 0, 0);//
     while (!feof(arq)) {
         if (scanner(arq, &token)) {
             printf("Token: %s, classificacao: %d\n", token.lexema, token.classificacao, token.coluna);
