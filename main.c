@@ -9,7 +9,11 @@ int main(int argc, char *argv[]) {
     Ttoken token;
     token.linha = 1;
     token.coluna = -1;
-    FILE *arq = criarArquivo("teste.txt");
+    if(argc < 2){ //Argc é o tamanho do vetor de argv
+        printf("Falta nome do arquivo. \n");
+        exit(-1);
+    }
+    FILE *arq = fopen(argv[1], "r+b"); //Pos em que o nome do arq ta no argv
     fseek(arq, 0, 0);
     while (!feof(arq)) {
         if (scanner(arq, &token)) {
@@ -22,15 +26,6 @@ int main(int argc, char *argv[]) {
     }
     fclose(arq);
     return 0;
-}
-
-FILE *criarArquivo(char nome[]) {
-    FILE *arq;
-    arq = fopen(nome, "r+b");
-    if (arq == NULL) {
-        arq = fopen(nome, "w+b");
-    }
-    return arq;
 }
 
 bool scanner(FILE *arq, Ttoken *t) {
@@ -157,19 +152,15 @@ void ID_PR(FILE *arq, char *c, int *qtd, Ttoken *token) {
         insere(token, qtd, c, arq);
         if (*c == '_' || isdigit(*c)) {
             flag = 1;
-        } else if (*c == ' ' || *c == '\n') {
+        } else if (*c == ' ' || *c == '\n' || !isalpha(*c)) {
             break;
         }
     }
-    if (*qtd == 1) {
-        (*token).classificacao = TIPO_CHAR;
+    (*token).lexema[*qtd] = '\0';
+    if (flag == 0) {
+        (*token).classificacao = verPR((*token).lexema);
     } else {
-        (*token).lexema[*qtd] = '\0';
-        if (flag == 0) {
-            (*token).classificacao = verPR((*token).lexema);
-        } else {
-            (*token).classificacao = TIPO_ID;
-        }
+        (*token).classificacao = TIPO_ID;
     }
 }
 

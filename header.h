@@ -53,9 +53,6 @@ typedef struct token {
 #define TRUE 1
 #define FALSE 0
 
-
-FILE *criarArquivo(char nome[]);
-
 bool scanner(FILE *arq, Ttoken *t);
 
 void insere(Ttoken *token, int *qtd, char *c, FILE *arq);
