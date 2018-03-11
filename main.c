@@ -4,22 +4,27 @@
 #include <string.h>
 #include <stdbool.h>
 #include "header.h"
+#include "enum.h"
 
 int main(int argc, char *argv[]) {
     Ttoken token;
-    token.linha = 1;
-    token.coluna = -1;
+    TErro erro;
+    erro.linha = 1;
+    erro.coluna = -1;
     if(argc < 2){ //Argc é o tamanho do vetor de argv
         printf("Falta nome do arquivo. \n");
         exit(-1);
     }
-    FILE *arq = fopen(argv[1], "r+b"); //Pos em que o nome do arq ta no argv
-    fseek(arq, 0, 0);
+    FILE *arq = fopen(argv[1], "rb"); //Pos em que o nome do arq ta no argv
+    if(arq == NULL) {
+        printf("Nome: %s invalido. \n", argv[1]);
+        exit(-1);
+    }
     while (!feof(arq)) {
-        if (scanner(arq, &token)) {
-            printf("Token: %s, classificacao: %d\n", token.lexema, token.classificacao, token.coluna);
+        if (scanner(arq, &token, &erro)) {
+            printf("Token: %s, classificacao: %d, %s\n", token.lexema, token.classificacao, getEnum(token.classificacao));
         } else {
-            printf("ERRO na linha: %d, coluna: %d, ultimo token lido: %s \n", token.linha, token.coluna + 1,
+            printf("%s na linha: %d, coluna: %d, ultimo token lido: %s \n", erro.nome, erro.linha, erro.coluna + 1,
                    token.lexema);
             break;
         }
@@ -28,43 +33,47 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-bool scanner(FILE *arq, Ttoken *t) {
+bool scanner(FILE *arq, Ttoken *t, TErro *erro) {
     int qtd = 0, status;
     static char c = ' ';
     while (1) {
         while (isblank(c)) { //ESPACO
             c = fgetc(arq);
-            (*t).coluna++;
+            (*erro).coluna++;
         }
         if (c == '+' || c == '-' || c == '*' || c == '=') { //ARITMETICO
-            verArit(arq, &c, &qtd, t);
+            verArit(arq, &c, &qtd, t, erro);
             break;
         } else if (c == '>' || c == '<' || c == '!') { //RELACIONAL
-            if (verRelacional(arq, &c, &qtd, t)) {
+            if (verRelacional(arq, &c, &qtd, t, erro)) {
                 break;
             }
+            strcpy((*erro).nome, "Erro Relacional");
             goto fim;
         } else if (c == ')' || c == '(' || c == '{' || c == '}' || c == ',' || c == ';') { //ESPECIAL
-            verEspecial(arq, &c, &qtd, t);
+            verEspecial(arq, &c, &qtd, t, erro);
             break;
         } else if (isdigit(c) || c == '.') { //INTEIRO E FLOAT
-            if (verInt_Float(arq, &c, &qtd, t)) {
+            if (verInt_Float(arq, &c, &qtd, t, erro)) {
                 break;
             }
+            strcpy((*erro).nome, "Erro Float");
             goto fim;
         } else if (isalpha(c) || c == '_') { //ID E PR
-            ID_PR(arq, &c, &qtd, t);
+            ID_PR(arq, &c, &qtd, t, erro);
             break;
         } else if (c == 39) { //CHAR
-            if (verChar(arq, &c, &qtd, t)) {
+            if (verChar(arq, &c, &qtd, t, erro)) {
                 (*t).classificacao = TIPO_CHAR;
             } else {
+                strcpy((*erro).nome, "Erro Char");
                 goto fim;
             }
             break;
         } else if (c == 47) { //COMENTARIO E DIVISAO
-            status = comentario(arq, &c, &qtd, t);
+            status = comentario(arq, &c, &qtd, t, erro);
             if (status == FALSE) {
+                strcpy((*erro).nome, "Erro Comentario");
                 goto fim;
             } else if (status == TIPO_DIV) {
                 break;
@@ -73,8 +82,8 @@ bool scanner(FILE *arq, Ttoken *t) {
             eof(t);
             return true;
         } else if (c == 10) { // \N QUEBRA DE LINHA
-            (*t).coluna = 0;
-            (*t).linha++;
+            (*erro).coluna = 0;
+            (*erro).linha++;
             c = fgetc(arq);
         } else { //ERRO
             fim:
@@ -88,10 +97,10 @@ bool scanner(FILE *arq, Ttoken *t) {
     return true;
 }
 
-void insere(Ttoken *token, int *qtd, char *c, FILE *arq) {
+void insere(Ttoken *token, int *qtd, char *c, FILE *arq, TErro *erro) {
     (*token).lexema[(*qtd)++] = *c;
     *c = fgetc(arq);
-    (*token).coluna++;
+    (*erro).coluna++;
 }
 
 void eof(Ttoken *token) {
@@ -100,36 +109,36 @@ void eof(Ttoken *token) {
     (*token).classificacao = tipo_EOF;
 }
 
-int comentario(FILE *arq, char *c, int *qtd, Ttoken *token) {
-    insere(token, qtd, c, arq);
+int comentario(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
+    insere(token, qtd, c, arq, erro);
     if (*c == 47) {//6
         (*qtd)--;
         (*token).lexema[0] = '\0';
         while (*c != 10) {
             *c = fgetc(arq);
-            (*token).coluna++;
+            (*erro).coluna++;
             if (feof(arq)) {//11
                 eof(token);
                 return TRUE;
             }
         }
         *c = fgetc(arq);
-        (*token).coluna = 0;
-        (*token).linha++;
+        (*erro).coluna = 0;
+        (*erro).linha++;
         return TRUE;
     } else if (*c == '*') {//9
         (*qtd)--;
         volta:
         while (*c != '*') {
             *c = fgetc(arq);
-            (*token).coluna++;
+            (*erro).coluna++;
             if (feof(arq)) {//Erro
                 return FALSE;
             }
         }
         while (*c == '*') {
             *c = fgetc(arq);
-            (*token).coluna++;
+            (*erro).coluna++;
             if (feof(arq)) {//Erro
                 return FALSE;
             }
@@ -146,10 +155,10 @@ int comentario(FILE *arq, char *c, int *qtd, Ttoken *token) {
     return TIPO_DIV;
 }
 
-void ID_PR(FILE *arq, char *c, int *qtd, Ttoken *token) {
+void ID_PR(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
     int flag = 0;
     while (isalpha(*c) || *c == '_' || isdigit(*c) || !feof(arq)) {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == '_' || isdigit(*c)) {
             flag = 1;
         } else if (*c == ' ' || *c == '\n' || !isalpha(*c)) {
@@ -164,7 +173,7 @@ void ID_PR(FILE *arq, char *c, int *qtd, Ttoken *token) {
     }
 }
 
-void verArit(FILE *arq, char *c, int *qtd, Ttoken *token) {
+void verArit(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
     if (*c == '+') {
         (*token).classificacao = TIPO_SOMA;
     } else if (*c == '-') {
@@ -172,7 +181,7 @@ void verArit(FILE *arq, char *c, int *qtd, Ttoken *token) {
     } else if (*c == '*') {
         (*token).classificacao = TIPO_MULT;
     } else {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == '=') {
             (*token).classificacao = TIPO_IGUAL;
         } else {
@@ -180,12 +189,12 @@ void verArit(FILE *arq, char *c, int *qtd, Ttoken *token) {
             return;
         }
     }
-    insere(token, qtd, c, arq);
+    insere(token, qtd, c, arq, erro);
 }
 
-bool verRelacional(FILE *arq, char *c, int *qtd, Ttoken *token) {
+bool verRelacional(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
     if (*c == '<') {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == '=') {
             (*token).classificacao = TIPO_MENOR_IGUAL;
         } else {
@@ -193,7 +202,7 @@ bool verRelacional(FILE *arq, char *c, int *qtd, Ttoken *token) {
             return true;
         }
     } else if (*c == '>') {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == '=') {
             (*token).classificacao = TIPO_MAIOR_IGUAL;
         } else {
@@ -201,18 +210,18 @@ bool verRelacional(FILE *arq, char *c, int *qtd, Ttoken *token) {
             return true;
         }
     } else {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == '=') {
             (*token).classificacao = TIPO_DIFERENTE;
         } else {
             return false;
         }
     }
-    insere(token, qtd, c, arq);
+    insere(token, qtd, c, arq, erro);
     return true;
 }
 
-void verEspecial(FILE *arq, char *c, int *qtd, Ttoken *token) {
+void verEspecial(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
     if (*c == ';') {
         (*token).classificacao = TIPO_PV;
     } else if (*c == '(') {
@@ -226,18 +235,18 @@ void verEspecial(FILE *arq, char *c, int *qtd, Ttoken *token) {
     } else {
         (*token).classificacao = TIPO_VIRGULA;
     }
-    insere(token, qtd, c, arq);
+    insere(token, qtd, c, arq, erro);
 }
 
-bool verInt_Float(FILE *arq, char *c, int *qtd, Ttoken *token) {
+bool verInt_Float(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
     while (isdigit(*c)) {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
     }
     if (*c == '.') {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (isdigit(*c)) {
             while (isdigit(*c)) {
-                insere(token, qtd, c, arq);
+                insere(token, qtd, c, arq, erro);
             }
         } else {
             return false;
@@ -274,12 +283,12 @@ int verPR(char pr[]) {
     }
 }
 
-bool verChar(FILE *arq, char *c, int *qtd, Ttoken *token) {
-    insere(token, qtd, c, arq);
+bool verChar(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
+    insere(token, qtd, c, arq, erro);
     if (isalpha(*c) || isdigit(*c)) {
-        insere(token, qtd, c, arq);
+        insere(token, qtd, c, arq, erro);
         if (*c == 39) {
-            insere(token, qtd, c, arq);
+            insere(token, qtd, c, arq, erro);
             return true;
         } else {
             return false;
