@@ -21,7 +21,7 @@ enum tipo {
     TIPO_MENOR_IGUAL = 33,
     TIPO_MAIOR_IGUAL = 34,
     TIPO_DIFERENTE = 35,
-    tipo_EOF = 17,
+    TIPO_EOF = 17,
     TIPO_MAIN = 40,
     TIPO_IF = 41,
     TIPO_ELSE = 42,

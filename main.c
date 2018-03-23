@@ -7,25 +7,27 @@
 #include "enum.h"
 
 int main(int argc, char *argv[]) {
-    Ttoken token;
+    Ttoken token, aux;
     TErro erro;
     erro.linha = 1;
-    erro.coluna = -1;
-    if(argc < 2){ //Argc é o tamanho do vetor de argv
+    erro.coluna = 1;
+    if (argc < 2) { //Argc é o tamanho do vetor de argv
         printf("Falta nome do arquivo. \n");
         exit(-1);
     }
     FILE *arq = fopen(argv[1], "rb"); //Pos em que o nome do arq ta no argv
-    if(arq == NULL) {
+    if (arq == NULL) {
         printf("Nome: %s invalido. \n", argv[1]);
         exit(-1);
     }
     while (!feof(arq)) {
         if (scanner(arq, &token, &erro)) {
-            printf("Token: %s, classificacao: %d, %s\n", token.lexema, token.classificacao, getEnum(token.classificacao));
+            printf("Token: %s, classificacao: %d, %s\n", token.lexema, token.classificacao,
+                   getEnum(token.classificacao));
+            aux = token;
         } else {
-            printf("%s na linha: %d, coluna: %d, ultimo token lido: %s \n", erro.nome, erro.linha, erro.coluna + 1,
-                   token.lexema);
+            printf("%s na linha: %d, coluna: %d, ultimo token lido: %s \n", erro.nome, erro.linha + 1, erro.coluna + 1,
+                   aux.lexema);
             break;
         }
     }
@@ -57,7 +59,6 @@ bool scanner(FILE *arq, Ttoken *t, TErro *erro) {
             if (verInt_Float(arq, &c, &qtd, t, erro)) {
                 break;
             }
-            strcpy((*erro).nome, "Erro Float");
             goto fim;
         } else if (isalpha(c) || c == '_') { //ID E PR
             ID_PR(arq, &c, &qtd, t, erro);
@@ -106,7 +107,7 @@ void insere(Ttoken *token, int *qtd, char *c, FILE *arq, TErro *erro) {
 void eof(Ttoken *token) {
     char eof[] = "EOF";
     strcpy((*token).lexema, eof);
-    (*token).classificacao = tipo_EOF;
+    (*token).classificacao = TIPO_EOF;
 }
 
 int comentario(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
@@ -131,7 +132,12 @@ int comentario(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
         volta:
         while (*c != '*') {
             *c = fgetc(arq);
-            (*erro).coluna++;
+            if (*c == 10) {
+                (*erro).coluna = 0;
+                (*erro).linha++;
+            } else {
+                (*erro).coluna++;
+            }
             if (feof(arq)) {//Erro
                 return FALSE;
             }
@@ -249,10 +255,14 @@ bool verInt_Float(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro) {
                 insere(token, qtd, c, arq, erro);
             }
         } else {
+            strcpy((*erro).nome, "Erro Float");
             return false;
         }
         (*token).classificacao = TIPO_FLOAT;
         return true;
+    } else if (isalpha(*c)) {
+        strcpy((*erro).nome, "Erro ID invalido");
+        return false;
     }
     (*token).classificacao = TIPO_INT;
     return true;

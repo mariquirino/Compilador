@@ -1,7 +1,6 @@
 //
 // Created by mariana on 10/03/18.
 //
-#include <stdio.h>
 #include "enum.h"
 
 
@@ -37,7 +36,7 @@ char* getEnum(int i) {
             return "Maior Igual";
         case TIPO_DIFERENTE :
             return "Diferente";
-        case tipo_EOF :
+        case TIPO_EOF :
             return "Fim De Arquivo";
         case TIPO_MAIN :
             return "Palavra Reservada: main";
