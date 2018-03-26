@@ -16,12 +16,8 @@ typedef struct erro {
     char nome[100];
 } TErro;
 
-
-#define TRUE 1
-#define FALSE 0
-
 //Scanner
-bool scanner(FILE *arq, Ttoken *t, TErro *erro);
+void scanner(FILE *arq, Ttoken *t, TErro *erro);
 
 void insere(Ttoken *token, int *qtd, char *c, FILE *arq, TErro *erro);
 
@@ -45,6 +41,22 @@ bool verChar(FILE *arq, char *c, int *qtd, Ttoken *token, TErro *erro);
 //
 
 //Parser
+void parser(FILE *arq);
+void programa(FILE *arq, Ttoken *token, TErro *erro);
+bool bloco(FILE *arq, Ttoken *token, TErro *erro);
+bool decl_var(FILE *arq, Ttoken *token, TErro *erro);
+bool comando(FILE *arq, Ttoken *token, TErro *erro);
+bool comando_basico(FILE *arq, Ttoken *token, TErro *erro);
+bool iteracao(FILE *arq, Ttoken *token, TErro *erro);
+bool atribuicao(FILE *arq, Ttoken *token, TErro *erro);
+bool expr_relacional(FILE *arq, Ttoken *token, TErro *erro);
+bool expr_arit(FILE *arq, Ttoken *token, TErro *erro);
+bool termo(FILE *arq, Ttoken *token, TErro *erro);
+bool fator(FILE *arq, Ttoken *token, TErro *erro);
+//
+
+//auxiliar
+void printa_erro(Ttoken token, TErro erro, char nome[]);
 //
 
 #endif //COMPILADOR_HEADER_H
