@@ -14,7 +14,6 @@
 typedef struct token {
     char lexema[30];
     int classificacao;
-
 } Ttoken;
 
 typedef struct erro {
@@ -27,3 +26,24 @@ void printa_erro(Ttoken token, TErro erro, char nome[]);
 //
 
 #endif //COMPILADOR_HEADER_H
+
+
+#ifndef ESTRUTURAS
+#define ESTRUTURAS
+
+typedef struct noStack{
+    char lexema[30];
+    int tipo;
+    int escopo;
+    struct noStack *prox;
+}NoStack;
+
+typedef NoStack * Stack;
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
