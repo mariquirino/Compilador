@@ -6,7 +6,7 @@
 #include "scanner.h"
 #include "stack.h"
 
-int escopo = 0, tipo;
+int escopo = 0, contador = 0, label = 1;
 Stack s;
 
 void parser(FILE *arq) {
@@ -20,7 +20,7 @@ void parser(FILE *arq) {
         if (token.classificacao != TIPO_EOF) {
             programa(arq, &token, &erro);
         }
-        printf("Parser ok \n");
+//        printf("Parser ok \n");
         destroyStack(&s);
     }
 }
@@ -111,7 +111,7 @@ bool comando(FILE *arq, Ttoken *token, TErro *erro) {
         scanner(arq, token, erro);
         if ((*token).classificacao == TIPO_ABRE_PARENTESE) {
             scanner(arq, token, erro);
-            if (expr_relacional(arq, token, erro)) {
+            printf("%s goto L%d\n", expr_relacional(arq, token, erro), label++);
                 if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
                     scanner(arq, token, erro);
                     if (comando(arq, token, erro)) {
@@ -130,9 +130,6 @@ bool comando(FILE *arq, Ttoken *token, TErro *erro) {
                 } else {
                     printa_erro(*token, *erro, "ERRO IF SEM )");
                 }
-            } else {
-                printa_erro(*token, *erro, "ERRO IF SEM EXP_RELACIONAL");
-            }
         } else {
             printa_erro(*token, *erro, "ERRO IF SEM (");
         }
@@ -154,19 +151,16 @@ bool iteracao(FILE *arq, Ttoken *token, TErro *erro) {
         scanner(arq, token, erro);
         if ((*token).classificacao == TIPO_ABRE_PARENTESE) {
             scanner(arq, token, erro);
-            if (expr_relacional(arq, token, erro)) {
-                if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
-                    scanner(arq, token, erro);
-                    if (comando(arq, token, erro)) {
-                        return true;
-                    } else {
-                        printa_erro(*token, *erro, "Erro sem Comando");
-                    }
+            printf("%s goto L%d\n", expr_relacional(arq, token, erro), label++);
+            if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
+                scanner(arq, token, erro);
+                if (comando(arq, token, erro)) {
+                    return true;
                 } else {
-                    printa_erro(*token, *erro, "Erro sem )");
+                    printa_erro(*token, *erro, "Erro sem Comando");
                 }
             } else {
-                printa_erro(*token, *erro, "Erro sem EXP_ARIT");
+                printa_erro(*token, *erro, "Erro sem )");
             }
         } else {
             printa_erro(*token, *erro, "Erro sem (");
@@ -178,7 +172,7 @@ bool iteracao(FILE *arq, Ttoken *token, TErro *erro) {
                 scanner(arq, token, erro);
                 if ((*token).classificacao == TIPO_ABRE_PARENTESE) {
                     scanner(arq, token, erro);
-                    if (expr_relacional(arq, token, erro)) {
+                    printf("%s goto L%d\n", expr_relacional(arq, token, erro), label++);
                         if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
                             scanner(arq, token, erro);
                             if ((*token).classificacao == TIPO_PV) {
@@ -190,9 +184,6 @@ bool iteracao(FILE *arq, Ttoken *token, TErro *erro) {
                         } else {
                             printa_erro(*token, *erro, "Erro sem )");
                         }
-                    } else {
-                        printa_erro(*token, *erro, "Erro sem EXP_ARIT");
-                    }
                 } else {
                     printa_erro(*token, *erro, "Erro sem (");
                 }
@@ -207,20 +198,28 @@ bool iteracao(FILE *arq, Ttoken *token, TErro *erro) {
 }
 
 bool atribuicao(FILE *arq, Ttoken *token, TErro *erro) {
-    int i = 0;
-    char nome[3][33] = {"ERRO ATRIBUICAO SEM =", "ERRO ATRIBUICAO EXP_ARIT OU TERMO", "ERRO SEM ;"};
+    char c[30];
+    int i = 0, aux;
+    TAnt ant;
+    char nome[2][33] = {"ERRO ATRIBUICAO SEM =", "ERRO ESPERAVA ;"};
     if ((*token).classificacao == TIPO_ID) {
-        tipo = procuraTipo(s, (*token).lexema, escopo);
+        strcpy(c, (*token).lexema);
+        aux = procuraTipo(s, (*token).lexema, escopo);
+        if (aux == -1) {
+            printa_erro(*token, *erro, "ERRO ATRIBUICAO COM VARIAVEL NAO DECLARADA");
+        }
         scanner(arq, token, erro);
         if ((*token).classificacao == TIPO_RECEBE) {
             i++;
             scanner(arq, token, erro);
-            if (expr_arit(arq, token, erro)) {//AQUI EH EXP ARIT
-                i++;
-                if ((*token).classificacao == TIPO_PV) {
-                    scanner(arq, token, erro);
-                    return true;
-                }
+            ant = expr_arit(arq, token, erro);
+            printf("%s = %s\n", c, ant.lexema);
+            if (aux != ant.tipo && (!(aux == TIPO_FLOAT && (ant.tipo == TIPO_INT || ant.tipo == TIPO_FLOAT)))) {
+                printa_erro(*token, *erro, "ERRO COMPATIBILIDADE");
+            }
+            if ((*token).classificacao == TIPO_PV) {
+                scanner(arq, token, erro);
+                return true;
             }
         }
     } else {
@@ -229,83 +228,128 @@ bool atribuicao(FILE *arq, Ttoken *token, TErro *erro) {
     printa_erro(*token, *erro, nome[i]);
 }
 
-bool expr_relacional(FILE *arq, Ttoken *token, TErro *erro) {
-    tipo = 0;
-    if (expr_arit(arq, token, erro)) {
-        if ((*token).classificacao >= TIPO_IGUAL && (*token).classificacao <= TIPO_DIFERENTE) {
-            scanner(arq, token, erro);
-            if (expr_arit(arq, token, erro)) {
-                return true;
-            }
-            printa_erro(*token, *erro, "Erro sem EXP_ARIT ou TERMO");
-        } else {
-            printa_erro(*token, *erro, "Erro sem OP_RELACIONAL");
-        }
-    }
-    return false;
-}
-
-bool expr_arit(FILE *arq, Ttoken *token, TErro *erro) {
-    continua:
-    if (termo(arq, token, erro)) {
-        if ((*token).classificacao == TIPO_SOMA || (*token).classificacao == TIPO_SUB) {
-            scanner(arq, token, erro);
-            goto continua;
-        }
-        return true;
-    }
-    return false;
-}
-
-bool termo(FILE *arq, Ttoken *token, TErro *erro) {
-    continua:
-    if ((fator(arq, token, erro))) {
+char* expr_relacional(FILE *arq, Ttoken *token, TErro *erro) {
+    TAnt aux, aux2;
+    aux = expr_arit(arq, token, erro);
+    if ((*token).classificacao >= TIPO_IGUAL && (*token).classificacao <= TIPO_DIFERENTE) {
+        strcat(aux.lexema, (*token).lexema);
         scanner(arq, token, erro);
-        if ((*token).classificacao == TIPO_MULT || (*token).classificacao == TIPO_DIV) {
-            scanner(arq, token, erro);
-            goto continua;
+        aux2 = expr_arit(arq, token, erro);
+        strcat(aux.lexema, aux2.lexema);
+        if (aux.tipo != aux2.tipo && (!((aux.tipo == TIPO_INT || aux.tipo == TIPO_FLOAT) &&
+                                        (aux2.tipo == TIPO_INT || aux2.tipo == TIPO_FLOAT)))) {
+            printa_erro(*token, *erro, "ERRO COMPATIBILIDADE");
         }
-        return true;
+        char *c;
+        c = aux.lexema;
+        return c;
     }
-    return false;
+    printa_erro(*token, *erro, "ERRO SEM EXPRESSAO RELACIONAL");
 }
 
-bool fator(FILE *arq, Ttoken *token, TErro *erro) {
-    int aux;
+TAnt expr_arit(FILE *arq, Ttoken *token, TErro *erro) {
+    int i = 0;
+    TAnt aux, ant;
+    ant = termo(arq, token, erro);
+    continua:
+    if ((*token).classificacao == TIPO_SOMA || (*token).classificacao == TIPO_SUB) {
+        strcat(ant.lexema, (*token).lexema);
+        scanner(arq, token, erro);
+        aux = termo(arq, token, erro);
+        strcat(ant.lexema, aux.lexema);
+        if (aux.tipo == TIPO_FLOAT && ant.tipo == TIPO_INT) {
+            ant.tipo = aux.tipo;
+        } else if ((ant.tipo == TIPO_CHAR && aux.tipo != TIPO_CHAR) ||
+                   (ant.tipo != TIPO_CHAR && aux.tipo == TIPO_CHAR)) {
+            printa_erro(*token, *erro, "ERRO COMPATIBILIDADE");
+        }
+        if (i == 0 && contador == 0) {
+            char c[3];
+            printf("T%d = %s \n", contador, ant.lexema);
+            strcpy(ant.lexema, "T");
+            sprintf(c, "%d", contador);
+            strcat(ant.lexema, c);
+        } else {
+            printf("T%d = %s \n", contador, ant.lexema);
+            char c[3];
+            strcpy(ant.lexema, "T");
+            sprintf(c, "%d", contador);
+            strcat(ant.lexema, c);
+
+        }
+        contador++;
+        i++;
+        goto continua;
+    }
+    return ant;
+}
+
+TAnt termo(FILE *arq, Ttoken *token, TErro *erro) {
+    int i = 0;
+    TAnt aux, ant;
+    ant = fator(arq, token, erro);
+    continua:
+    scanner(arq, token, erro);
+    if ((*token).classificacao == TIPO_MULT || (*token).classificacao == TIPO_DIV) {
+        if ((*token).classificacao == TIPO_DIV) {
+            if (ant.tipo == TIPO_INT) {
+                ant.tipo = TIPO_FLOAT;
+            }
+        }
+        strcat(ant.lexema, (*token).lexema);
+        scanner(arq, token, erro);
+        aux = fator(arq, token, erro);
+        if (aux.tipo == TIPO_FLOAT && ant.tipo == TIPO_INT) {
+            ant.tipo = aux.tipo;
+        } else if ((ant.tipo == TIPO_CHAR && aux.tipo != TIPO_CHAR) ||
+                   (ant.tipo != TIPO_CHAR && aux.tipo == TIPO_CHAR)) {
+            printa_erro(*token, *erro, "ERRO COMPATIBILIDADE");
+        }
+        if (i == 0) {
+            char c[3];
+            strcat(ant.lexema, (*token).lexema);
+            printf("T%d = %s \n", contador, ant.lexema);
+            strcpy(ant.lexema, "T");
+            sprintf(c, "%d", contador);
+            strcat(ant.lexema, c);
+        } else {
+            printf("T%d = %s \n", contador, ant.lexema);
+            char c[3];
+            strcpy(ant.lexema, "T");
+            sprintf(c, "%d", contador);
+            strcat(ant.lexema, c);
+        }
+        contador++;
+        i++;
+        goto continua;
+    }
+    return ant;
+}
+
+TAnt fator(FILE *arq, Ttoken *token, TErro *erro) {
+    TAnt aux;
     int sequencia[4] = {TIPO_ID, TIPO_INT, TIPO_FLOAT, TIPO_CHAR};
     if ((*token).classificacao == TIPO_ABRE_PARENTESE) {
         scanner(arq, token, erro);
-        if (expr_arit(arq, token, erro)) {
-            if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
-                return true;
-            }
-            printa_erro(*token, *erro, "Erro sem )");
+        aux = expr_arit(arq, token, erro);
+        if ((*token).classificacao == TIPO_FECHA_PARENTESE) {
+            return aux;
         }
-        printa_erro(*token, *erro, "Erro sem EXP_ARIT");
+        printa_erro(*token, *erro, "Erro sem )");
     } else {
         for (int i = 0; i < 4; ++i) {
             if ((*token).classificacao == sequencia[i]) {
-                checa:
-                if (tipo == -1) {
-                    printa_erro(*token, *erro, "VARIAVEL NAO DECLARADA");
-                } else if (tipo == 0) {
-                    return true;
-                } else if (tipo == sequencia[i]) {
-                    return true;
-                } else if (tipo == TIPO_FLOAT && sequencia[i] == TIPO_INT) {
-                    return true;
-                } else if (sequencia[i] == TIPO_ID) {
-                    aux = procuraTipo(s, (*token).lexema, escopo);
-                    if (aux == -1) {
+                if (sequencia[i] == TIPO_ID) {
+                    sequencia[i] = procuraTipo(s, (*token).lexema, escopo);
+                    if (sequencia[i] == -1) {
                         printa_erro(*token, *erro, "VARIAVEL NAO DECLARADA");
                     }
-                    sequencia[i] = aux;
-                    goto checa;
                 }
-                printf("Tipo: %s com tipo: %s \n", getEnum(tipo), getEnum(sequencia[i]));
-                printa_erro(*token, *erro, "ERRO COMPATIBILIDADE DE TIPOS");
+                strcpy(aux.lexema, (*token).lexema);
+                aux.tipo = sequencia[i];
+                return aux;
             }
         }
     }
-    return false;
+    printa_erro(*token, *erro, "ERRO SEM FATOR");
 }

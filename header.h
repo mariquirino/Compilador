@@ -38,6 +38,11 @@ typedef struct noStack{
     struct noStack *prox;
 }NoStack;
 
+typedef struct noAnt{
+    char lexema[30];
+    int tipo;
+}TAnt;
+
 typedef NoStack * Stack;
 #endif
 

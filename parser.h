@@ -14,9 +14,9 @@ bool comando(FILE *arq, Ttoken *token, TErro *erro);
 bool comando_basico(FILE *arq, Ttoken *token, TErro *erro);
 bool iteracao(FILE *arq, Ttoken *token, TErro *erro);
 bool atribuicao(FILE *arq, Ttoken *token, TErro *erro);
-bool expr_relacional(FILE *arq, Ttoken *token, TErro *erro);
-bool expr_arit(FILE *arq, Ttoken *token, TErro *erro);
-bool termo(FILE *arq, Ttoken *token, TErro *erro);
-bool fator(FILE *arq, Ttoken *token, TErro *erro);
+char* expr_relacional(FILE *arq, Ttoken *token, TErro *erro);
+TAnt expr_arit(FILE *arq, Ttoken *token, TErro *erro);
+TAnt termo(FILE *arq, Ttoken *token, TErro *erro);
+TAnt fator(FILE *arq, Ttoken *token, TErro *erro);
 
 #endif //COMPILADOR_PARSER_H
